@@ -13,4 +13,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: rowtype-yoga/purescript-yoga-actions/.github/actions/setup@main
-      - run: bunx spago build
+      - run: spago build
