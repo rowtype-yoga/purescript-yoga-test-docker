@@ -13,11 +13,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PureScript with Bun
-        uses: ./.github/actions/setup-purescript-bun
+      - name: Setup Node.js 22 (required for Spago 1.x)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
-      - name: Install dependencies
-        run: bun install
+      - name: Setup PureScript
+        uses: purescript-contrib/setup-purescript@main
+        with:
+          purescript: "0.15.15"
+          spago: "unstable"
 
       - name: Build
         run: spago build
