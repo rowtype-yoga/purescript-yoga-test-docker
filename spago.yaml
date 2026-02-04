@@ -12,7 +12,7 @@ package:
       githubOwner: rowtype-yoga
       githubRepo: purescript-yoga-test-docker
   dependencies:
-    - datetime
+    - datetime: ">=6.0.0 <7.0.0"
     - aff: ">=7.0.0 <8.0.0"
     - effect: ">=4.0.0 <5.0.0"
     - exceptions: ">=6.0.0 <7.0.0"
