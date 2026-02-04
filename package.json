@@ -1,0 +1,19 @@
+{
+  "name": "purescript-yoga-test-docker",
+  "version": "0.1.0",
+  "description": "Docker Compose management for PureScript integration tests",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rowtype-yoga/purescript-yoga-test-docker.git"
+  },
+  "keywords": [
+    "purescript",
+    "docker",
+    "docker-compose",
+    "testing",
+    "integration-tests",
+    "yoga"
+  ]
+}

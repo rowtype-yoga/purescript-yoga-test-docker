@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install PureScript compiler
+        run: bun install --global purescript@0.15.15
+
+      - name: Install Spago
+        run: bun install --global spago
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build
+        run: spago build
