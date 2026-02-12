@@ -1,72 +1,61 @@
-import { spawnSync } from "child_process";
-import path from "path";
-import { fileURLToPath } from "url";
+import { spawn, spawnSync } from "child_process";
 
-// Get the directory where tests are running from
-// We need to go up from yoga-test-docker/output/.../Yoga.Test.Docker/ to the test directory
-const getComposeDir = () => {
-  // When called from a test, process.cwd() should be the workspace root
-  return process.cwd();
+const getCompose = () => {
+  if (spawnSync("docker", ["compose", "version"], { stdio: "pipe" }).status === 0)
+    return ["docker", "compose"];
+  if (spawnSync("podman", ["compose", "version"], { stdio: "pipe" }).status === 0)
+    return ["podman", "compose"];
+  throw new Error("Neither docker compose nor podman compose found");
 };
 
-export const dockerComposeUp = (composeFile) => () => {
-  const cwd = getComposeDir();
-  console.log(`🐳 Starting test service (${composeFile})...`);
-  
-  const result = spawnSync(
-    "docker",
-    ["compose", "-f", composeFile, "up", "-d"],
-    { cwd, stdio: "pipe" }
-  );
-  
-  if (result.error || result.status !== 0) {
-    const errorMsg = result.error 
-      ? result.error.message 
-      : result.stderr.toString();
-    throw new Error(`Failed to start Docker: ${errorMsg}`);
-  }
-  
-  return (onError, onSuccess) => {
-    onSuccess();
-  };
+const compose = getCompose();
+
+const runAsync = (args, cwd) =>
+  new Promise((resolve, reject) => {
+    const [cmd, ...baseArgs] = compose;
+    const proc = spawn(cmd, [...baseArgs, ...args], { cwd, stdio: "pipe" });
+    let stdout = "";
+    let stderr = "";
+    proc.stdout.on("data", (d) => { stdout += d; });
+    proc.stderr.on("data", (d) => { stderr += d; });
+    proc.on("close", (code) => {
+      if (code === 0) resolve(stdout);
+      else reject(new Error("compose failed (exit " + code + "): " + stderr));
+    });
+    proc.on("error", reject);
+  });
+
+export const dockerComposeUpImpl = (composeFile) => (onError, onSuccess) => {
+  const cwd = process.cwd();
+  console.log("Starting test service (" + composeFile + ")...");
+  runAsync(["-f", composeFile, "up", "-d"], cwd)
+    .then(() => onSuccess())
+    .catch((e) => onError(e));
+  return (cancelError, onCancelerError, onCancelerSuccess) => onCancelerSuccess();
 };
 
-export const dockerComposeDown = (composeFile) => () => {
-  const cwd = getComposeDir();
-  console.log(`\n🛑 Stopping test service (${composeFile})...`);
-  
-  const result = spawnSync(
-    "docker",
-    ["compose", "-f", composeFile, "down"],
-    { cwd, stdio: "pipe" }
-  );
-  
-  if (result.error || result.status !== 0) {
-    console.error("Warning: Failed to stop Docker:", result.error || result.stderr.toString());
-  }
-  
-  return (onError, onSuccess) => {
-    onSuccess();
-  };
+export const dockerComposeDownImpl = (composeFile) => (onError, onSuccess) => {
+  const cwd = process.cwd();
+  console.log("Stopping test service (" + composeFile + ")...");
+  runAsync(["-f", composeFile, "down"], cwd)
+    .then(() => onSuccess())
+    .catch((e) => {
+      console.error("Warning: Failed to stop compose service:", e.message);
+      onSuccess();
+    });
+  return (cancelError, onCancelerError, onCancelerSuccess) => onCancelerSuccess();
 };
 
-export const isServiceHealthy = (composeFile) => () => {
-  const cwd = getComposeDir();
-  
-  const result = spawnSync(
-    "docker",
-    ["compose", "-f", composeFile, "ps", "--format", "json"],
-    { cwd, stdio: "pipe" }
-  );
-  
-  if (result.error || result.status !== 0) {
-    return (onError, onSuccess) => onSuccess(false);
-  }
-  
-  const output = result.stdout.toString();
-  const healthy = output.includes('"Health":"healthy"');
-  
-  return (onError, onSuccess) => {
-    onSuccess(healthy);
-  };
+export const isServiceHealthyImpl = (composeFile) => (onError, onSuccess) => {
+  const cwd = process.cwd();
+  runAsync(["-f", composeFile, "ps", "--format", "json"], cwd)
+    .then((output) => {
+      const healthy =
+        output.includes('"Health":"healthy"') ||
+        output.includes('"Health": "healthy"') ||
+        output.includes("(healthy)");
+      onSuccess(healthy);
+    })
+    .catch(() => onSuccess(false));
+  return (cancelError, onCancelerError, onCancelerSuccess) => onCancelerSuccess();
 };
